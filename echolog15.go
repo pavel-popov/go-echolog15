@@ -68,6 +68,10 @@ func HTTPErrorHandler(l log15.Logger) echo.HTTPErrorHandler {
 		if !c.Response().Committed() {
 			http.Error(c.Response(), msg, code)
 		}
-		l.Error("Echo error", "err", err, "code", code, "msg", msg)
+		if err.Error() != msg {
+			l.Error("Echo error", "err", err, "code", code, "msg", msg)
+		} else {
+			l.Error("Echo error", "code", code, "msg", msg)
+		}
 	}
 }
