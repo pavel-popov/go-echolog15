@@ -2,6 +2,7 @@ package echolog15
 
 import (
 	"net"
+	"net/http"
 	"net/http/httputil"
 	"time"
 
@@ -52,5 +53,21 @@ func Logger(l log15.Logger) echo.MiddlewareFunc {
 				"size", size)
 			return nil
 		}
+	}
+}
+
+// HTTPErrorHandler is an error handler with log15 support.
+func HTTPErrorHandler(l log15.Logger) echo.HTTPErrorHandler {
+	return func(err error, c *echo.Context) {
+		code := http.StatusInternalServerError
+		msg := http.StatusText(code)
+		if he, ok := err.(*echo.HTTPError); ok {
+			code = he.Code()
+			msg = he.Error()
+		}
+		if !c.Response().Committed() {
+			http.Error(c.Response(), msg, code)
+		}
+		l.Error("Echo error", "err", err, "code", code, "msg", msg)
 	}
 }
