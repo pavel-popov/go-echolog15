@@ -3,38 +3,37 @@ package echolog15
 import (
 	"net"
 	"net/http"
-	//"net/http/httputil"
+	"net/http/httputil"
 	"time"
 
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/engine/standard"
 	"gopkg.in/inconshreveable/log15.v2"
 )
 
 // Logger is a logger middleware for log15 package.
 func Logger(l log15.Logger) echo.MiddlewareFunc {
-	return func(next echo.Handler) echo.Handler {
-		return echo.HandlerFunc(func(c echo.Context) error {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
 			req := c.Request()
 			res := c.Response()
 
-			/*
-				l.Debug("Echo request", "req", func() string {
-					dump, _ := httputil.DumpRequest(req, true)
-					return string(dump)
-				}())
-			*/
+			l.Debug("Echo request", "request", func() string {
+				dump, _ := httputil.DumpRequest(req.(*standard.Request).Request, true)
+				return string(dump)
+			}())
 
 			remoteAddr := req.RemoteAddress()
-			if ip := req.Header().Get(echo.XRealIP); ip != "" {
+			if ip := req.Header().Get(echo.HeaderXRealIP); ip != "" {
 				remoteAddr = ip
-			} else if ip = req.Header().Get(echo.XForwardedFor); ip != "" {
+			} else if ip = req.Header().Get(echo.HeaderXForwardedFor); ip != "" {
 				remoteAddr = ip
 			} else {
 				remoteAddr, _, _ = net.SplitHostPort(remoteAddr)
 			}
 
 			start := time.Now()
-			if err := next.Handle(c); err != nil {
+			if err := next(c); err != nil {
 				c.Error(err)
 			}
 			stop := time.Now()
@@ -48,11 +47,11 @@ func Logger(l log15.Logger) echo.MiddlewareFunc {
 				"remoteAddr", remoteAddr,
 				"method", req.Method(),
 				"path", path,
-				"response", res.Status(),
+				"status", res.Status(),
 				"time", stop.Sub(start),
 				"size", res.Size())
 			return nil
-		})
+		}
 	}
 }
 
@@ -68,10 +67,17 @@ func HTTPErrorHandler(l log15.Logger) echo.HTTPErrorHandler {
 		if !c.Response().Committed() {
 			c.String(code, msg)
 		}
+		request := func() string {
+			if c.Request().Method() == "GET" {
+				dump, _ := httputil.DumpRequest(c.Request().(*standard.Request).Request, true)
+				return string(dump)
+			}
+			return "Request body dumped only for GET requests"
+		}()
 		if err.Error() != msg {
-			l.Error("Echo error", "err", err, "code", code, "msg", msg)
+			l.Error("Echo error", "err", err, "code", code, "msg", msg, "request", request)
 		} else {
-			l.Error("Echo error", "code", code, "msg", msg)
+			l.Error("Echo error", "code", code, "msg", msg, "request", request)
 		}
 	}
 }

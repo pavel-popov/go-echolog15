@@ -5,12 +5,13 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/engine/standard"
 	"github.com/schmooser/go-echolog15"
 	"gopkg.in/inconshreveable/log15.v2"
 )
 
 // Handler
-func hello(c *echo.Context) error {
+func hello(c echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!\n")
 }
 
@@ -31,11 +32,11 @@ func main() {
 	e.Get("/", hello)
 
 	// Routes
-	e.Get("/error", func(c *echo.Context) error {
+	e.Get("/error", func(c echo.Context) error {
 		err := errors.New("Some test error")
 		return err
 	})
 
 	// Start server
-	e.Run(":1323")
+	e.Run(standard.New(":1323"))
 }
