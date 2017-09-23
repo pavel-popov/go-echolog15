@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine/standard"
 	"gopkg.in/inconshreveable/log15.v2"
 )
 
@@ -19,14 +18,14 @@ func Logger(l log15.Logger) echo.MiddlewareFunc {
 			res := c.Response()
 
 			l.Debug("Echo request", "request", func() string {
-				dump, _ := httputil.DumpRequest(req.(*standard.Request).Request, true)
+				dump, _ := httputil.DumpRequest(req, true)
 				return string(dump)
 			}())
 
-			remoteAddr := req.RemoteAddress()
-			if ip := req.Header().Get(echo.HeaderXRealIP); ip != "" {
+			remoteAddr := req.RemoteAddr
+			if ip := req.Header.Get(echo.HeaderXRealIP); ip != "" {
 				remoteAddr = ip
-			} else if ip = req.Header().Get(echo.HeaderXForwardedFor); ip != "" {
+			} else if ip = req.Header.Get(echo.HeaderXForwardedFor); ip != "" {
 				remoteAddr = ip
 			} else {
 				remoteAddr, _, _ = net.SplitHostPort(remoteAddr)
@@ -38,18 +37,18 @@ func Logger(l log15.Logger) echo.MiddlewareFunc {
 			}
 			stop := time.Now()
 
-			path := req.URL().Path()
+			path := req.URL.Path
 			if path == "" {
 				path = "/"
 			}
 
 			l.Info("Echo response",
 				"remoteAddr", remoteAddr,
-				"method", req.Method(),
+				"method", req.Method,
 				"path", path,
-				"status", res.Status(),
+				"status", res.Status,
 				"time", stop.Sub(start),
-				"size", res.Size())
+				"size", res.Size)
 			return nil
 		}
 	}
@@ -62,14 +61,14 @@ func HTTPErrorHandler(l log15.Logger) echo.HTTPErrorHandler {
 		msg := http.StatusText(code)
 		if he, ok := err.(*echo.HTTPError); ok {
 			code = he.Code
-			msg = he.Message
+			msg = he.Message.(string)
 		}
-		if !c.Response().Committed() {
+		if !c.Response().Committed {
 			c.String(code, msg)
 		}
 		request := func() string {
-			if c.Request().Method() == "GET" {
-				dump, _ := httputil.DumpRequest(c.Request().(*standard.Request).Request, true)
+			if c.Request().Method == "GET" {
+				dump, _ := httputil.DumpRequest(c.Request(), true)
 				return string(dump)
 			}
 			return "Request body dumped only for GET requests"
