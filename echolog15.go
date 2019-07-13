@@ -7,11 +7,17 @@ import (
 	"time"
 
 	"github.com/labstack/echo"
-	"gopkg.in/inconshreveable/log15.v2"
 )
 
+// LogProvider provides function required for logging.
+type LogProvider interface {
+	Debug(msg string, ctx ...interface{})
+	Info(msg string, ctx ...interface{})
+	Error(msg string, ctx ...interface{})
+}
+
 // Logger is a logger middleware for log15 package.
-func Logger(l log15.Logger) echo.MiddlewareFunc {
+func Logger(l LogProvider) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			req := c.Request()
@@ -55,7 +61,7 @@ func Logger(l log15.Logger) echo.MiddlewareFunc {
 }
 
 // HTTPErrorHandler is an error handler with log15 support.
-func HTTPErrorHandler(l log15.Logger) echo.HTTPErrorHandler {
+func HTTPErrorHandler(l LogProvider) echo.HTTPErrorHandler {
 	return func(err error, c echo.Context) {
 		code := http.StatusInternalServerError
 		msg := http.StatusText(code)
